@@ -1,0 +1,66 @@
+.app-layout {
+  min-height: 100vh;
+}
+
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 16rem;
+  padding: 1.5rem 1rem;
+  background: var(--bs-dark);
+  color: var(--bs-white);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  padding: 0.5rem;
+  color: inherit;
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.sidebar .nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--bs-white);
+}
+
+.content {
+  min-height: 100vh;
+  margin-left: 16rem;
+  background: var(--bs-body-bg);
+}
+
+@media (max-width: 767.98px) {
+  .sidebar {
+    position: static;
+    width: 100%;
+  }
+
+  .sidebar .nav {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+  }
+
+  .brand {
+    margin-bottom: 1rem;
+  }
+
+  .content {
+    margin-left: 0;
+  }
+}

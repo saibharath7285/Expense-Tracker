@@ -1,0 +1,162 @@
+<!-- Floating Launcher Button -->
+<button
+  *ngIf="!isOpen"
+  type="button"
+  class="copilot-launcher btn btn-primary shadow-lg"
+  (click)="toggleOpen()"
+  aria-label="Open Expense Copilot"
+>
+  <i class="bi bi-stars fs-5"></i>
+  <span class="fw-semibold">Copilot</span>
+</button>
+
+<!-- Floating Chat Window -->
+<section
+  *ngIf="isOpen"
+  class="copilot-window card shadow-lg"
+  aria-label="Expense Copilot Chat"
+>
+  <!-- Window Header -->
+  <header class="card-header d-flex justify-content-between align-items-center py-2 px-3 bg-primary text-white">
+    <div class="d-flex align-items-center gap-2">
+      <div class="copilot-avatar">
+        <i class="bi bi-robot fs-5"></i>
+      </div>
+      <div>
+        <h6 class="mb-0 fw-bold">Expense Copilot</h6>
+        <small class="text-white-50 fs-8">Gemini 2.0 &bull; MCP Tools</small>
+      </div>
+    </div>
+    <div class="d-flex align-items-center gap-1">
+      <button
+        type="button"
+        class="btn btn-sm btn-link text-white text-decoration-none p-1"
+        (click)="clearChat()"
+        [disabled]="isLoading || messages.length === 0"
+        title="Clear conversation"
+      >
+        <i class="bi bi-arrow-counterclockwise fs-6"></i>
+      </button>
+      <button
+        type="button"
+        class="btn btn-sm btn-link text-white text-decoration-none p-1"
+        (click)="close()"
+        title="Close Copilot"
+      >
+        <i class="bi bi-x-lg fs-6"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Message Body -->
+  <div #messagesContainer class="card-body copilot-body p-3">
+    <!-- Welcome & Quick Prompts (shown when empty) -->
+    <div *ngIf="messages.length === 0" class="welcome-box text-center py-3">
+      <div class="avatar-welcome mb-2">
+        <i class="bi bi-stars text-primary fs-1"></i>
+      </div>
+      <h6 class="fw-bold mb-1">Hi, I'm your Expense Copilot!</h6>
+      <p class="text-muted small mb-3">
+        Ask me anything about your expenses. I use the <strong>Model Context Protocol (MCP)</strong> to query and update your live database.
+      </p>
+
+      <div class="quick-prompts text-start">
+        <span class="text-muted small fw-semibold d-block mb-2">Try asking:</span>
+        <button
+          *ngFor="let prompt of quickPrompts"
+          type="button"
+          class="btn btn-outline-secondary btn-sm rounded-pill mb-2 me-1 text-start"
+          (click)="sendQuickPrompt(prompt)"
+        >
+          {{ prompt }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Messages List -->
+    <div class="d-flex flex-column gap-3">
+      <article
+        *ngFor="let msg of messages"
+        class="chat-bubble"
+        [class.bubble-user]="msg.role === 'user'"
+        [class.bubble-assistant]="msg.role === 'assistant'"
+        [class.bubble-error]="msg.role === 'error'"
+      >
+        <!-- User Bubble -->
+        <div *ngIf="msg.role === 'user'" class="bubble-content bg-primary text-white p-2 px-3 rounded-3 shadow-sm">
+          <p class="mb-0 text-break">{{ msg.content }}</p>
+        </div>
+
+        <!-- Assistant Bubble -->
+        <div *ngIf="msg.role === 'assistant'" class="bubble-content bg-light border p-2 px-3 rounded-3 shadow-sm">
+          <p class="mb-0 text-break assistant-text">{{ msg.content }}</p>
+
+          <!-- MCP Tools Executed Accordion -->
+          <div *ngIf="msg.toolsExecuted && msg.toolsExecuted.length > 0" class="mt-2 pt-2 border-top">
+            <div *ngFor="let tool of msg.toolsExecuted; let idx = index" class="mb-1">
+              <button
+                type="button"
+                class="btn btn-xs tool-badge d-flex align-items-center gap-1 w-100 text-start"
+                (click)="toggleTool(msg.id + '-' + idx)"
+              >
+                <i class="bi bi-tools text-primary"></i>
+                <span class="fw-semibold">MCP: {{ tool.toolName }}</span>
+                <span class="badge bg-success-subtle text-success ms-auto" *ngIf="tool.success">Executed</span>
+                <span class="badge bg-danger-subtle text-danger ms-auto" *ngIf="!tool.success">Failed</span>
+                <i class="bi" [class.bi-chevron-down]="!expandedTools[msg.id + '-' + idx]" [class.bi-chevron-up]="expandedTools[msg.id + '-' + idx]"></i>
+              </button>
+
+              <div *ngIf="expandedTools[msg.id + '-' + idx]" class="tool-details-panel p-2 mt-1 bg-white rounded border small font-monospace">
+                <div class="text-muted small fw-semibold">Arguments:</div>
+                <pre class="mb-1 p-1 bg-light rounded">{{ formatJson(tool.argumentsJson) }}</pre>
+                <div class="text-muted small fw-semibold">MCP Result:</div>
+                <pre class="mb-0 p-1 bg-light rounded">{{ formatJson(tool.output) }}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Error Bubble -->
+        <div *ngIf="msg.role === 'error'" class="bubble-content bg-danger-subtle text-danger border border-danger-subtle p-2 px-3 rounded-3 shadow-sm">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span class="fw-semibold">Copilot Notice</span>
+          </div>
+          <p class="mb-0 small text-break">{{ msg.content }}</p>
+        </div>
+      </article>
+
+      <!-- Loading Bubble -->
+      <article *ngIf="isLoading" class="chat-bubble bubble-assistant">
+        <div class="bubble-content bg-light border p-2 px-3 rounded-3 shadow-sm d-flex align-items-center gap-2">
+          <div class="spinner-grow spinner-grow-sm text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <span class="text-muted small">Thinking and querying MCP tools...</span>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <!-- Window Footer (Input) -->
+  <footer class="card-footer bg-white p-2 border-top">
+    <form (ngSubmit)="sendMessage()" class="d-flex gap-2">
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        placeholder="Ask anything about expenses..."
+        [(ngModel)]="userInput"
+        name="copilotInput"
+        [disabled]="isLoading"
+        autocomplete="off"
+      />
+      <button
+        type="submit"
+        class="btn btn-primary btn-sm px-3"
+        [disabled]="!userInput.trim() || isLoading"
+      >
+        <i class="bi bi-send-fill"></i>
+      </button>
+    </form>
+  </footer>
+</section>

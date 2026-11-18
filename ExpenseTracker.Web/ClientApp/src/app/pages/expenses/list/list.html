@@ -1,0 +1,105 @@
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-bold mb-1">Expense Tracker</h2>
+      <span class="text-muted">Manage and monitor all your recorded personal and business expenses</span>
+    </div>
+    <button class="btn btn-primary d-flex align-items-center gap-2" type="button" (click)="addExpense()">
+      <i class="bi bi-plus-lg"></i>
+      <span>Add Expense</span>
+    </button>
+  </div>
+
+  <div *ngIf="isLoading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="text-muted mt-2">Fetching expenses from database...</p>
+  </div>
+
+  <div *ngIf="errorMessage" class="alert alert-danger d-flex align-items-center gap-2 mb-4" role="alert">
+    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+    <div>{{ errorMessage }}</div>
+  </div>
+
+  <ng-container *ngIf="!isLoading && !errorMessage">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="h5 mb-0">All Expenses</h3>
+        <span class="badge text-bg-primary">{{ expenses.length }} Records</span>
+      </div>
+
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th class="ps-4">Title</th>
+                <th>Category</th>
+                <th>Subcategory</th>
+                <th>Date</th>
+                <th class="text-end">Amount</th>
+                <th>Notes</th>
+                <th class="text-end pe-4">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of expenses">
+                <td class="ps-4 fw-semibold">{{ item.title }}</td>
+                <td>{{ item.categoryName }}</td>
+                <td class="text-muted">{{ item.subCategoryName || '-' }}</td>
+                <td class="text-muted">{{ item.expenseDate | date:'mediumDate' }}</td>
+                <td class="text-end fw-bold">${{ item.amount | number:'1.2-2' }}</td>
+                <td class="text-muted">{{ item.notes || '-' }}</td>
+                <td class="text-end pe-4 text-nowrap">
+                  <button class="btn btn-sm btn-outline-secondary me-2" type="button" title="View expense" (click)="viewExpense(item)">
+                    <i class="bi bi-eye-fill" aria-hidden="true"></i>
+                    <span class="visually-hidden">View {{ item.title }}</span>
+                  </button>
+                  <button class="btn btn-sm btn-outline-primary me-2" type="button" title="Edit expense" (click)="editExpense(item)">
+                    <i class="bi bi-pencil-fill" aria-hidden="true"></i>
+                    <span class="visually-hidden">Edit {{ item.title }}</span>
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger" type="button" title="Delete expense" (click)="requestDelete(item)">
+                    <i class="bi bi-trash-fill" aria-hidden="true"></i>
+                    <span class="visually-hidden">Delete {{ item.title }}</span>
+                  </button>
+                </td>
+              </tr>
+
+              <tr *ngIf="expenses.length === 0">
+                <td colspan="7" class="text-center py-5 text-muted">
+                  <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                  No expenses found. Click <strong>"+ Add Expense"</strong> to create your first record.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>
+
+<div *ngIf="expenseToDelete" class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="delete-expense-title">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="delete-expense-title" class="modal-title fs-5">Delete Expense</h2>
+        <button class="btn-close" type="button" [disabled]="isDeleting" aria-label="Close" (click)="cancelDelete()"></button>
+      </div>
+      <div class="modal-body">
+        <p>Delete <strong>{{ expenseToDelete.title }}</strong>? This action cannot be undone.</p>
+        <div *ngIf="deleteErrorMessage" class="alert alert-danger mb-0" role="alert">{{ deleteErrorMessage }}</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" [disabled]="isDeleting" (click)="cancelDelete()">Cancel</button>
+        <button class="btn btn-danger" type="button" [disabled]="isDeleting" (click)="confirmDelete()">
+          <span *ngIf="isDeleting" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+          Delete Expense
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div *ngIf="expenseToDelete" class="modal-backdrop fade show"></div>

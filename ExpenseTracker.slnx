@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="ExpenseTracker.API/ExpenseTracker.API.csproj" />
+  <Project Path="ExpenseTracker.McpServer/ExpenseTracker.McpServer.csproj" Id="5ee903e7-2e3a-4240-b37b-336e8913b537" />
+  <Project Path="ExpenseTracker.Web/ExpenseTracker.Web.csproj" />
+</Solution>

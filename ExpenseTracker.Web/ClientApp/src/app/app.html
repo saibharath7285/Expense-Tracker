@@ -1,0 +1,31 @@
+<div class="app-layout">
+  <aside class="sidebar">
+    <a class="brand" routerLink="/dashboard">
+      <i class="bi bi-wallet2"></i>
+      <span>ExpenseTracker</span>
+    </a>
+
+    <nav class="nav flex-column gap-2" aria-label="Main navigation">
+      <a class="nav-link" routerLink="/dashboard" routerLinkActive="active">
+        <i class="bi bi-grid"></i>
+        <span>Dashboard</span>
+      </a>
+
+      <a class="nav-link" routerLink="/expenses" routerLinkActive="active">
+        <i class="bi bi-receipt"></i>
+        <span>Expense Tracker</span>
+      </a>
+
+      <a class="nav-link" routerLink="/assistant" routerLinkActive="active">
+        <i class="bi bi-chat-dots"></i>
+        <span>Expense Assistant</span>
+      </a>
+    </nav>
+  </aside>
+
+  <main class="content">
+    <router-outlet></router-outlet>
+  </main>
+
+  <app-copilot-widget></app-copilot-widget>
+</div>
