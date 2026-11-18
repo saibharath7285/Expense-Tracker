@@ -1,0 +1,97 @@
+<div class="assistant-page">
+  <header class="assistant-header">
+    <div>
+      <h1 class="h3 fw-bold mb-1">Expense Assistant</h1>
+      <p class="text-muted mb-0">Run ExpenseTracker tools through the MCP server.</p>
+    </div>
+
+    <button
+      class="btn btn-outline-secondary"
+      type="button"
+      [disabled]="isRunning || messages.length === 0"
+      (click)="clearMessages()"
+    >
+      Clear
+    </button>
+  </header>
+
+  <div class="assistant-content">
+    <form class="tool-panel card shadow-sm" [formGroup]="form" (ngSubmit)="runTool()">
+      <div class="card-header">
+        <h2 class="h5 mb-0">MCP Tool</h2>
+      </div>
+
+      <div class="card-body">
+        <div class="mb-3">
+          <label for="toolName" class="form-label">Tool</label>
+          <select
+            id="toolName"
+            class="form-select"
+            formControlName="toolName"
+            (change)="onToolChange()"
+          >
+            <option *ngFor="let tool of tools" [value]="tool.name">{{ tool.label }}</option>
+          </select>
+        </div>
+
+        <p class="text-muted">{{ selectedTool?.description }}</p>
+
+        <div class="mb-3">
+          <label for="argumentsJson" class="form-label">Parameters (JSON)</label>
+          <textarea
+            id="argumentsJson"
+            class="form-control font-monospace"
+            rows="13"
+            formControlName="argumentsJson"
+            spellcheck="false"
+          ></textarea>
+        </div>
+
+        <div *ngIf="validationMessage" class="alert alert-danger" role="alert">
+          {{ validationMessage }}
+        </div>
+      </div>
+
+      <div class="card-footer d-flex justify-content-end">
+        <button class="btn btn-primary" type="submit" [disabled]="form.invalid || isRunning">
+          <span
+            *ngIf="isRunning"
+            class="spinner-border spinner-border-sm me-2"
+            aria-hidden="true"
+          ></span>
+          Run Tool
+        </button>
+      </div>
+    </form>
+
+    <section class="conversation card shadow-sm" aria-label="MCP request history">
+      <div class="card-header">
+        <h2 class="h5 mb-0">MCP Activity</h2>
+      </div>
+
+      <div #messageContainer class="conversation-body" aria-live="polite">
+        <div *ngIf="messages.length === 0 && !isRunning" class="empty-state text-muted">
+          Select a tool and run it to view the MCP response.
+        </div>
+
+        <article
+          *ngFor="let message of messages"
+          class="message"
+          [class.message-request]="message.role === 'request'"
+          [class.message-response]="message.role === 'response'"
+          [class.message-error]="message.role === 'error'"
+        >
+          <strong class="d-block mb-2">{{ message.title }}</strong>
+          <pre class="mb-0">{{ message.content }}</pre>
+        </article>
+
+        <article *ngIf="isRunning" class="message message-response">
+          <div class="d-flex align-items-center gap-2">
+            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+            <span>Waiting for the MCP server...</span>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+</div>
