@@ -8,5 +8,8 @@ namespace ExpenseTracker.API.Contracts
             string toolName,
             IReadOnlyDictionary<string, object?>? arguments,
             CancellationToken cancellationToken);
+
+        Task<object[]> GetToolDeclarationsAsync(
+            CancellationToken cancellationToken);
     }
 }

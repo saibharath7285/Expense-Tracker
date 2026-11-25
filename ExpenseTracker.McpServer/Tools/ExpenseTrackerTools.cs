@@ -19,7 +19,7 @@ namespace ExpenseTracker.McpServer.Tools
             _expenseService = expenseService;
         }
 
-        [McpServerTool]
+        [McpServerTool(Name = "get_expenses")]
         [Description("Retrieves all recorded expenses with categories, amounts, dates, and notes from the database.")]
         public async Task<string> GetExpenses()
         {
@@ -27,7 +27,7 @@ namespace ExpenseTracker.McpServer.Tools
             return JsonSerializer.Serialize(expenses, new JsonSerializerOptions { WriteIndented = true });
         }
 
-        [McpServerTool]
+        [McpServerTool(Name = "get_categories")]
         [Description("Retrieves all available expense categories and their subcategories for organizing and recording expenses.")]
         public async Task<string> GetCategories()
         {
@@ -35,7 +35,7 @@ namespace ExpenseTracker.McpServer.Tools
             return JsonSerializer.Serialize(categories, new JsonSerializerOptions { WriteIndented = true });
         }
 
-        [McpServerTool]
+        [McpServerTool(Name = "get_spending_summary")]
         [Description("Retrieves a spending summary broken down by category, showing expense count and total amount spent.")]
         public async Task<string> GetSpendingSummary()
         {
@@ -43,7 +43,7 @@ namespace ExpenseTracker.McpServer.Tools
             return JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true });
         }
 
-        [McpServerTool]
+        [McpServerTool(Name = "add_expense")]
         [Description("Records a new expense in the database.")]
         public async Task<string> AddExpense(
             [Description("Title or description of the expense (e.g. 'Team Lunch', 'Uber ride')")] string title,
@@ -71,7 +71,7 @@ namespace ExpenseTracker.McpServer.Tools
             }, new JsonSerializerOptions { WriteIndented = true });
         }
 
-        [McpServerTool]
+        [McpServerTool(Name = "update_expense")]
         [Description("Updates an existing expense record by its unique ID.")]
         public async Task<string> UpdateExpense(
             [Description("The unique ID of the expense to update")] int id,
@@ -100,7 +100,7 @@ namespace ExpenseTracker.McpServer.Tools
             }, new JsonSerializerOptions { WriteIndented = true });
         }
 
-        [McpServerTool]
+        [McpServerTool(Name = "delete_expense")]
         [Description("Deletes an expense record from the database by its unique ID.")]
         public async Task<string> DeleteExpense(
             [Description("The unique ID of the expense to delete")] int id)

@@ -2,36 +2,10 @@
   <header class="assistant-header d-flex flex-wrap justify-content-between align-items-center gap-3">
     <div>
       <h1 class="h3 fw-bold mb-1">Expense Assistant</h1>
-      <p class="text-muted mb-0">Conversational AI Copilot and MCP Tool Tester for ExpenseTracker.</p>
     </div>
 
-    <!-- Mode Selector Tabs -->
     <div class="d-flex align-items-center gap-2">
-      <div class="btn-group shadow-sm" role="group" aria-label="Assistant Mode">
-        <button
-          type="button"
-          class="btn"
-          [class.btn-primary]="activeTab === 'copilot'"
-          [class.btn-outline-primary]="activeTab !== 'copilot'"
-          (click)="activeTab = 'copilot'"
-        >
-          <i class="bi bi-stars me-1"></i>
-          AI Copilot
-        </button>
-        <button
-          type="button"
-          class="btn"
-          [class.btn-primary]="activeTab === 'manual'"
-          [class.btn-outline-primary]="activeTab !== 'manual'"
-          (click)="activeTab = 'manual'"
-        >
-          <i class="bi bi-tools me-1"></i>
-          Manual MCP Tester
-        </button>
-      </div>
-
       <button
-        *ngIf="activeTab === 'copilot'"
         class="btn btn-outline-secondary"
         type="button"
         [disabled]="isCopilotLoading || copilotMessages.length === 0"
@@ -39,23 +13,13 @@
       >
         Clear Chat
       </button>
-
-      <button
-        *ngIf="activeTab === 'manual'"
-        class="btn btn-outline-secondary"
-        type="button"
-        [disabled]="isManualRunning || manualMessages.length === 0"
-        (click)="clearManualMessages()"
-      >
-        Clear History
-      </button>
     </div>
   </header>
 
   <!-- ============================================== -->
-  <!-- TAB 1: AI COPILOT CHAT                         -->
+  <!-- AI ASSISTANT CHAT                              -->
   <!-- ============================================== -->
-  <section *ngIf="activeTab === 'copilot'" class="copilot-full-container card shadow-sm mt-3">
+  <section class="copilot-full-container card shadow-sm mt-3">
     <!-- Chat Messages Stream -->
     <div #copilotMessageContainer class="copilot-stream p-4" aria-live="polite">
       <!-- Welcome Empty State -->
@@ -63,10 +27,9 @@
         <div class="avatar-circle mx-auto mb-3">
           <i class="bi bi-stars fs-1 text-primary"></i>
         </div>
-        <h4 class="fw-bold mb-2">Welcome to your Expense Copilot</h4>
+        <h4 class="fw-bold mb-2">Welcome to your Expense Assistant</h4>
         <p class="text-muted mx-auto mb-4" style="max-width: 520px;">
           Ask any question about your spending, categories, or recent transactions in natural language.
-          Copilot automatically calls the appropriate <strong>Model Context Protocol (MCP)</strong> tools in real-time.
         </p>
 
         <div class="quick-prompts-row d-flex flex-wrap justify-content-center gap-2">
@@ -97,42 +60,14 @@
 
           <!-- Assistant Bubble -->
           <div *ngIf="msg.role === 'assistant'" class="bubble-content bg-light border p-3 rounded-4 shadow-sm">
-            <div class="d-flex align-items-center gap-2 mb-2 text-primary">
-              <i class="bi bi-robot fs-5"></i>
-              <span class="fw-bold small">Expense Copilot</span>
-            </div>
             <p class="mb-0 text-break assistant-text">{{ msg.content }}</p>
-
-            <!-- Executed Tools List -->
-            <div *ngIf="msg.toolsExecuted && msg.toolsExecuted.length > 0" class="mt-3 pt-2 border-top">
-              <div *ngFor="let tool of msg.toolsExecuted; let ti = index" class="mb-2">
-                <button
-                  type="button"
-                  class="btn btn-sm btn-light border d-flex align-items-center gap-2 w-100 text-start"
-                  (click)="toggleToolDetails(msg.id + '-' + ti)"
-                >
-                  <i class="bi bi-tools text-primary"></i>
-                  <span class="fw-semibold">MCP Tool Called: {{ tool.toolName }}</span>
-                  <span class="badge bg-success ms-auto" *ngIf="tool.success">Executed via MCP</span>
-                  <span class="badge bg-danger ms-auto" *ngIf="!tool.success">Execution Failed</span>
-                  <i class="bi" [class.bi-chevron-down]="!expandedTools[msg.id + '-' + ti]" [class.bi-chevron-up]="expandedTools[msg.id + '-' + ti]"></i>
-                </button>
-
-                <div *ngIf="expandedTools[msg.id + '-' + ti]" class="p-3 mt-1 bg-white rounded border font-monospace small">
-                  <div class="text-muted fw-bold mb-1">Parameters (JSON):</div>
-                  <pre class="bg-light p-2 rounded mb-2">{{ formatOutput(tool.argumentsJson) }}</pre>
-                  <div class="text-muted fw-bold mb-1">MCP Result Output:</div>
-                  <pre class="bg-light p-2 rounded mb-0">{{ formatOutput(tool.output) }}</pre>
-                </div>
-              </div>
-            </div>
           </div>
 
           <!-- Error Bubble -->
           <div *ngIf="msg.role === 'error'" class="bubble-content bg-danger-subtle text-danger border border-danger-subtle p-3 rounded-4 shadow-sm">
             <div class="d-flex align-items-center gap-2 mb-1">
               <i class="bi bi-exclamation-triangle-fill fs-5"></i>
-              <span class="fw-bold">Copilot Notice</span>
+              <span class="fw-bold">Notice</span>
             </div>
             <p class="mb-0 text-break">{{ msg.content }}</p>
           </div>
@@ -144,7 +79,7 @@
             <div class="spinner-border spinner-border-sm text-primary" role="status">
               <span class="visually-hidden">Loading...</span>
             </div>
-            <span class="text-muted">Copilot is reasoning and querying the MCP server...</span>
+            <span class="text-muted">Thinking...</span>
           </div>
         </article>
       </div>
@@ -173,87 +108,4 @@
       </form>
     </div>
   </section>
-
-  <!-- ============================================== -->
-  <!-- TAB 2: MANUAL MCP TOOL TESTER (ORIGINAL)       -->
-  <!-- ============================================== -->
-  <div *ngIf="activeTab === 'manual'" class="assistant-content mt-3">
-    <form class="tool-panel card shadow-sm" [formGroup]="form" (ngSubmit)="runTool()">
-      <div class="card-header">
-        <h2 class="h5 mb-0">MCP Tool</h2>
-      </div>
-
-      <div class="card-body">
-        <div class="mb-3">
-          <label for="toolName" class="form-label">Tool</label>
-          <select
-            id="toolName"
-            class="form-select"
-            formControlName="toolName"
-            (change)="onToolChange()"
-          >
-            <option *ngFor="let tool of tools" [value]="tool.name">{{ tool.label }}</option>
-          </select>
-        </div>
-
-        <p class="text-muted">{{ selectedTool?.description }}</p>
-
-        <div class="mb-3">
-          <label for="argumentsJson" class="form-label">Parameters (JSON)</label>
-          <textarea
-            id="argumentsJson"
-            class="form-control font-monospace"
-            rows="13"
-            formControlName="argumentsJson"
-            spellcheck="false"
-          ></textarea>
-        </div>
-
-        <div *ngIf="validationMessage" class="alert alert-danger" role="alert">
-          {{ validationMessage }}
-        </div>
-      </div>
-
-      <div class="card-footer d-flex justify-content-end">
-        <button class="btn btn-primary" type="submit" [disabled]="form.invalid || isManualRunning">
-          <span
-            *ngIf="isManualRunning"
-            class="spinner-border spinner-border-sm me-2"
-            aria-hidden="true"
-          ></span>
-          Run Tool
-        </button>
-      </div>
-    </form>
-
-    <section class="conversation card shadow-sm" aria-label="MCP request history">
-      <div class="card-header">
-        <h2 class="h5 mb-0">MCP Activity</h2>
-      </div>
-
-      <div #manualMessageContainer class="conversation-body" aria-live="polite">
-        <div *ngIf="manualMessages.length === 0 && !isManualRunning" class="empty-state text-muted">
-          Select a tool and run it to view the MCP response.
-        </div>
-
-        <article
-          *ngFor="let message of manualMessages"
-          class="message"
-          [class.message-request]="message.role === 'request'"
-          [class.message-response]="message.role === 'response'"
-          [class.message-error]="message.role === 'error'"
-        >
-          <strong class="d-block mb-2">{{ message.title }}</strong>
-          <pre class="mb-0">{{ message.content }}</pre>
-        </article>
-
-        <article *ngIf="isManualRunning" class="message message-response">
-          <div class="d-flex align-items-center gap-2">
-            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-            <span>Waiting for the MCP server...</span>
-          </div>
-        </article>
-      </div>
-    </section>
-  </div>
 </div>

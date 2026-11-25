@@ -24,22 +24,13 @@ builder.Services.RegisterDataContext(builder.Configuration);
 builder.Services.RegisterRepositories();
 builder.Services.RegisterServices();
 
-var defaultMcpServerPath = Path.GetFullPath(
-    Path.Combine(
-        builder.Environment.ContentRootPath,
-        "..",
-        "ExpenseTracker.McpServer",
-        "bin",
-        "Debug",
-        "net10.0",
-        "ExpenseTracker.McpServer.dll"));
-
-var mcpServerPath =
-    builder.Configuration["Mcp:ServerDllPath"]
-    ?? defaultMcpServerPath;
+var mcpServerUrl =
+    builder.Configuration["Mcp:ServerUrl"]
+    ?? builder.Configuration["Mcp:Endpoint"]
+    ?? "http://localhost:5005/mcp";
 
 builder.Services.AddSingleton<IMcpTestClient>(
-    new McpTestClient(mcpServerPath));
+    new McpTestClient(mcpServerUrl));
 
 var app = builder.Build();
 

@@ -27,6 +27,7 @@ namespace ExpenseTracker.API.Services
             ILogger<GeminiCopilotService> logger)
         {
             _httpClient = httpClient;
+            _httpClient.Timeout = TimeSpan.FromSeconds(30);
             _mcpClient = mcpClient;
             _configuration = configuration;
             _logger = logger;
@@ -46,18 +47,16 @@ namespace ExpenseTracker.API.Services
             {
                 return new CopilotChatResponse(
                     Success: false,
-                    Reply: "Gemini API key is not configured. Please set your Gemini API key in ExpenseTracker.API's appsettings.json under 'Gemini:ApiKey' or set the GEMINI_API_KEY environment variable.",
+                    Reply: "Gemini API key is not configured. Please set your Gemini API key in ExpenseTracker.API's appsettings.json under 'Gemini:ApiKey'.",
                     ToolsExecuted: new List<ExecutedToolDto>(),
                     Error: "MISSING_API_KEY");
             }
 
-            var model = _configuration["Gemini:Model"];
-            if (string.IsNullOrWhiteSpace(model))
+            var configuredModel = _configuration["Gemini:Model"];
+            if (string.IsNullOrWhiteSpace(configuredModel))
             {
-                model = "gemini-2.0-flash";
+                configuredModel = "gemini-3.8-flash";
             }
-
-            var endpoint = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
 
             var toolsExecuted = new List<ExecutedToolDto>();
             var contents = new List<object>();
@@ -65,7 +64,7 @@ namespace ExpenseTracker.API.Services
             // Append conversational history if provided
             if (request.History != null && request.History.Count > 0)
             {
-                foreach (var hist in request.History.TakeLast(8))
+                foreach (var hist in request.History.TakeLast(6))
                 {
                     var geminiRole = hist.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase) ||
                                      hist.Role.Equals("model", StringComparison.OrdinalIgnoreCase)
@@ -87,39 +86,67 @@ namespace ExpenseTracker.API.Services
                 parts = new object[] { new { text = request.Message } }
             });
 
-            var payload = new
-            {
-                system_instruction = new
-                {
-                    parts = new object[]
-                    {
-                        new
-                        {
-                            text = "You are Expense Copilot, an AI assistant for the ExpenseTracker application. " +
-                                   "You help users inspect their spending summary, list expenses, look up categories, " +
-                                   "and record or delete expenses using the provided tools. " +
-                                   "Always call the appropriate tool when the user asks about their financial data rather than guessing. " +
-                                   "Format dollar amounts with $. Be concise, clear, and helpful in your explanations."
-                        }
-                    }
-                },
-                contents,
-                tools = GetToolDeclarations()
-            };
-
+            var activeModel = configuredModel;
             const int maxTurns = 5;
+
             for (var turn = 0; turn < maxTurns; turn++)
             {
+                var payload = new
+                {
+                    system_instruction = new
+                    {
+                        parts = new object[]
+                        {
+                            new
+                            {
+                                text = "You are Expense Copilot, an AI assistant for the ExpenseTracker application. " +
+                                       "You help users inspect their spending summary, list expenses, look up categories, " +
+                                       "and record, update, or delete expenses using the provided tools. " +
+                                       "Always call the appropriate tool when the user asks about their financial data rather than guessing. " +
+                                       "Format dollar amounts with $. Be concise, clear, and helpful."
+                            }
+                        }
+                    },
+                    contents,
+                    tools = GetToolDeclarations()
+                };
+
+                var endpoint = $"https://generativelanguage.googleapis.com/v1beta/models/{activeModel}:generateContent?key={apiKey}";
                 var jsonBody = JsonSerializer.Serialize(payload);
+
                 using var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
                 {
                     Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
                 };
 
+                // Use a short 6-second timeout for standard heavy models, so we fall back quickly without hanging the UI
+                var attemptTimeout = activeModel.Contains("lite", StringComparison.OrdinalIgnoreCase)
+                    ? TimeSpan.FromSeconds(25)
+                    : TimeSpan.FromSeconds(6);
+
+                using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                attemptCts.CancelAfter(attemptTimeout);
+
                 HttpResponseMessage response;
                 try
                 {
-                    response = await _httpClient.SendAsync(requestMessage, cancellationToken);
+                    response = await _httpClient.SendAsync(requestMessage, attemptCts.Token);
+                }
+                catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    if (!activeModel.Contains("lite", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _logger.LogWarning("Model {Model} timed out after {Sec}s. Falling back to gemini-flash-lite-latest...", activeModel, attemptTimeout.TotalSeconds);
+                        activeModel = "gemini-flash-lite-latest";
+                        turn--;
+                        continue;
+                    }
+
+                    return new CopilotChatResponse(
+                        Success: false,
+                        Reply: $"The request to Gemini ({activeModel}) timed out. Google's servers may be temporarily overloaded.",
+                        ToolsExecuted: toolsExecuted,
+                        Error: ex.Message);
                 }
                 catch (Exception ex)
                 {
@@ -132,6 +159,17 @@ namespace ExpenseTracker.API.Services
                 }
 
                 var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                // Handle 503 / 429 high demand fallback to gemini-flash-lite-latest
+                if ((response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable ||
+                     response.StatusCode == System.Net.HttpStatusCode.TooManyRequests) &&
+                    !activeModel.Contains("lite", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning("Model {Model} returned {Status}. Falling back to gemini-flash-lite-latest...", activeModel, response.StatusCode);
+                    activeModel = "gemini-flash-lite-latest";
+                    turn--; // Retry current turn with fallback model
+                    continue;
+                }
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -150,7 +188,7 @@ namespace ExpenseTracker.API.Services
                 {
                     return new CopilotChatResponse(
                         Success: false,
-                        Reply: "Gemini did not return any response content.",
+                        Reply: "Gemini did not return any candidate responses.",
                         ToolsExecuted: toolsExecuted);
                 }
 
@@ -197,7 +235,7 @@ namespace ExpenseTracker.API.Services
 
                 // Execute the requested MCP tool
                 var convertedArgs = ConvertJsonElementToDictionary(functionArgs);
-                _logger.LogInformation("Gemini requested MCP tool: {ToolName}", functionName);
+                _logger.LogInformation("Gemini requested MCP tool: {ToolName} via model {Model}", functionName, activeModel);
 
                 McpToolResponse toolResult;
                 try
@@ -216,27 +254,13 @@ namespace ExpenseTracker.API.Services
                     Output: toolResult.Output,
                     Success: toolResult.Success));
 
-                // Append the model's functionCall turn
-                contents.Add(new
-                {
-                    role = "model",
-                    parts = new object[]
-                    {
-                        new
-                        {
-                            functionCall = new
-                            {
-                                name = functionName,
-                                args = convertedArgs
-                            }
-                        }
-                    }
-                });
+                // Append the exact model content returned by Gemini (preserves thoughtSignature, id, and all tokens)
+                contents.Add(JsonSerializer.Deserialize<object>(contentProp.GetRawText())!);
 
-                // Append the functionResponse turn
+                // In Gemini 3.x / 2.5, function responses MUST use role "user"
                 contents.Add(new
                 {
-                    role = "function",
+                    role = "user",
                     parts = new object[]
                     {
                         new
@@ -253,14 +277,6 @@ namespace ExpenseTracker.API.Services
                         }
                     }
                 });
-
-                // Update payload contents for next iteration
-                payload = new
-                {
-                    payload.system_instruction,
-                    contents,
-                    payload.tools
-                };
             }
 
             return new CopilotChatResponse(

@@ -7,47 +7,60 @@ namespace ExpenseTracker.API.Services;
 
 public sealed class McpTestClient : IMcpTestClient
 {
-    private readonly string _serverDllPath;
+    private readonly Uri _serverUri;
     private readonly SemaphoreSlim _initializationLock = new(1, 1);
 
     private McpClient? _client;
 
-    public McpTestClient(string serverDllPath)
+    public McpTestClient(string serverUrl)
     {
-        _serverDllPath = serverDllPath;
+        if (string.IsNullOrWhiteSpace(serverUrl))
+        {
+            throw new ArgumentException("MCP Server URL cannot be null or empty.", nameof(serverUrl));
+        }
+
+        if (!Uri.TryCreate(serverUrl, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            throw new ArgumentException($"Invalid MCP Server URL: '{serverUrl}'. Must be an absolute HTTP or HTTPS URL.", nameof(serverUrl));
+        }
+
+        _serverUri = uri;
     }
 
-    public async Task<McpToolResponse> CallToolAsync(
-        string toolName,
-        IReadOnlyDictionary<string, object?>? arguments,
-        CancellationToken cancellationToken)
+    public async Task<McpToolResponse> CallToolAsync(string toolName, IReadOnlyDictionary<string, object?>? arguments, CancellationToken cancellationToken)
     {
         var client = await GetClientAsync(cancellationToken);
 
-        var result = await client.CallToolAsync(
-            toolName,
-            arguments,
-            cancellationToken: cancellationToken);
+        var result = await client.CallToolAsync(toolName, arguments, cancellationToken: cancellationToken);
 
-        var output = string.Join(
-            Environment.NewLine,
-            result.Content
-                .OfType<TextContentBlock>()
-                .Select(content => content.Text));
+        var output = string.Join(Environment.NewLine, result.Content.OfType<TextContentBlock>().Select(content => content.Text));
 
-        if (string.IsNullOrWhiteSpace(output) &&
-            result.StructuredContent is not null)
+        if (string.IsNullOrWhiteSpace(output) && result.StructuredContent is not null)
         {
             output = result.StructuredContent.Value.ToString();
         }
 
-        return new McpToolResponse(
-            result.IsError != true,
-            output);
+        return new McpToolResponse(result.IsError != true, output);
     }
 
-    private async Task<McpClient> GetClientAsync(
-        CancellationToken cancellationToken)
+    public async Task<object[]> GetToolDeclarationsAsync(CancellationToken cancellationToken)
+    {
+        var client = await GetClientAsync(cancellationToken);
+        var tools = await client.ListToolsAsync(cancellationToken: cancellationToken);
+        return tools.Select(t => new
+        {
+            type = "function",
+            function = new
+            {
+                name = t.Name,
+                description = t.Description,
+                parameters = t.JsonSchema
+            }
+        }).ToArray();
+    }
+
+    private async Task<McpClient> GetClientAsync(CancellationToken cancellationToken)
     {
         if (_client is not null)
         {
@@ -63,35 +76,14 @@ public sealed class McpTestClient : IMcpTestClient
                 return _client;
             }
 
-            if (!File.Exists(_serverDllPath))
+            var httpTransport = new HttpClientTransport(new HttpClientTransportOptions
             {
-                throw new FileNotFoundException(
-                    "The ExpenseTracker MCP server has not been built.",
-                    _serverDllPath);
-            }
-
-            var workingDirectory =
-                Path.GetDirectoryName(_serverDllPath)
-                ?? throw new InvalidOperationException(
-                    "The MCP server working directory is invalid.");
-
-            var environmentVariables =
-                StdioClientTransportOptions.GetDefaultEnvironmentVariables();
-
-            var transport = new StdioClientTransport(
-                new StdioClientTransportOptions
-                {
-                    Name = "ExpenseTracker",
-                    Command = "dotnet",
-                    Arguments = [_serverDllPath],
-                    WorkingDirectory = workingDirectory,
-                    InheritEnvironmentVariables = false,
-                    EnvironmentVariables = environmentVariables,
-                    ShutdownTimeout = TimeSpan.FromSeconds(10),
-                });
+                Endpoint = _serverUri,
+                TransportMode = HttpTransportMode.AutoDetect
+            });
 
             _client = await McpClient.CreateAsync(
-                transport,
+                httpTransport,
                 cancellationToken: cancellationToken);
 
             return _client;

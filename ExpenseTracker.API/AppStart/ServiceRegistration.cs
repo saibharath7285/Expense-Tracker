@@ -8,7 +8,8 @@ namespace ExpenseTracker.API.AppStart
         public static IServiceCollection RegisterServices(this IServiceCollection services)
         {
             services.AddScoped<IExpenseTrackerService, ExpenseTrackerService>();
-            services.AddHttpClient<ICopilotService, GeminiCopilotService>();
+            // services.AddHttpClient<ICopilotService, GeminiCopilotService>();
+            services.AddHttpClient<ICopilotService, OllamaService>();
             return services;
         }
     }
