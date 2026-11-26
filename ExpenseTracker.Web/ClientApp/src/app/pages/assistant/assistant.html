@@ -60,7 +60,7 @@
 
           <!-- Assistant Bubble -->
           <div *ngIf="msg.role === 'assistant'" class="bubble-content bg-light border p-3 rounded-4 shadow-sm">
-            <p class="mb-0 text-break assistant-text">{{ msg.content }}</p>
+            <div class="mb-0 text-break assistant-text" [innerHTML]="msg.content | assistantMarkdown"></div>
           </div>
 
           <!-- Error Bubble -->

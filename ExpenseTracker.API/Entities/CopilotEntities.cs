@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace ExpenseTracker.API.Entities
 {
@@ -19,6 +20,6 @@ namespace ExpenseTracker.API.Entities
     public sealed record CopilotChatResponse(
         bool Success,
         string Reply,
-        List<ExecutedToolDto> ToolsExecuted,
+        [property: JsonIgnore] List<ExecutedToolDto> ToolsExecuted,
         string? Error = null);
 }

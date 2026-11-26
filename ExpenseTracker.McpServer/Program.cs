@@ -1,4 +1,5 @@
 ﻿using ExpenseTracker.API.AppStart;
+using ExpenseTracker.McpServer.AppStart;
 using ExpenseTracker.McpServer.Tools;
 using Microsoft.AspNetCore.Builder;
 using ModelContextProtocol.AspNetCore;
@@ -16,10 +17,11 @@ if (string.IsNullOrEmpty(builder.Configuration["urls"]))
     builder.WebHost.UseUrls("http://localhost:5005");
 }
 
-// 1. Wire database, repositories, and services (reusing our ExpenseTracker.API AppStart methods)
+// 1. Wire database, repositories, services, and RAG knowledge services
 builder.Services.RegisterDataContext(builder.Configuration);
 builder.Services.RegisterRepositories();
 builder.Services.RegisterServices();
+builder.Services.RegisterKnowledgeServices(builder.Configuration);
 
 // 2. Register MCP Server with stateless Streamable HTTP transport and tools
 builder.Services.AddMcpServer()
@@ -27,7 +29,8 @@ builder.Services.AddMcpServer()
     {
         options.SessionMode = HttpServerSessionMode.Stateless;
     })
-    .WithTools<ExpenseTrackerTools>();
+    .WithTools<ExpenseTrackerTools>()
+    .WithTools<KnowledgeTools>();
 
 var app = builder.Build();
 

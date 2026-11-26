@@ -16,6 +16,7 @@ import {
   CopilotService,
 } from '../../services/copilot.service';
 import { McpTestService } from './mcp-test.service';
+import { AssistantMarkdownPipe } from './assistant-markdown.pipe';
 
 interface McpToolDefinition {
   name: string;
@@ -35,7 +36,7 @@ interface AssistantMessage {
 @Component({
   selector: 'app-assistant',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, AssistantMarkdownPipe],
   templateUrl: './assistant.html',
   styleUrl: './assistant.scss',
 })
@@ -193,39 +194,47 @@ export class AssistantComponent {
       history: history.slice(0, -1),
     };
 
+    let assistantMsg: ChatMessage | null = null;
+
     this.copilotService
-      .chat(request)
-      .pipe(
-        takeUntilDestroyed(this.destroyRef),
-        finalize(() => {
-          this.isCopilotLoading = false;
+      .chatStream(
+        request,
+        (token) => {
+          if (!assistantMsg) {
+            assistantMsg = {
+              id: crypto.randomUUID(),
+              role: 'assistant',
+              content: '',
+              timestamp: new Date(),
+            };
+            this.copilotMessages.push(assistantMsg);
+          }
+          assistantMsg.content += token;
           this.cdr.detectChanges();
           this.scrollCopilotToBottom();
-        }),
-      )
-      .subscribe({
-        next: (res) => {
-          this.copilotMessages.push({
-            id: crypto.randomUUID(),
-            role: res.success ? 'assistant' : 'error',
-            content: res.reply,
-            timestamp: new Date(),
-            toolsExecuted: res.toolsExecuted,
-          });
-          this.cdr.detectChanges();
         },
-        error: (err) => {
+        (sanitizedReply) => {
+          if (assistantMsg) {
+            assistantMsg.content = sanitizedReply;
+            this.cdr.detectChanges();
+          }
+        },
+      )
+      .catch((err) => {
+        if (!assistantMsg) {
           this.copilotMessages.push({
             id: crypto.randomUUID(),
             role: 'error',
             content:
-              err?.error?.detail ||
-              err?.error?.reply ||
-              'Could not connect to Copilot. Please check your API settings.',
+              err?.message || 'Could not connect to Copilot. Please check your API settings.',
             timestamp: new Date(),
           });
-          this.cdr.detectChanges();
-        },
+        }
+      })
+      .finally(() => {
+        this.isCopilotLoading = false;
+        this.cdr.detectChanges();
+        this.scrollCopilotToBottom();
       });
   }
 
