@@ -47,6 +47,7 @@ namespace ExpenseTracker.API.Services
                           "Use the search_knowledge tool for application guidance and explanations. " +
                           "Always use the current expense tools for financial data and database changes rather than guessing. " +
                           "Never mention internal tool names, function names, MCP messages, tool arguments, or raw tool output in the final answer. " +
+                          "Never mention internal database IDs (such as expense ID, category ID, or subcategory ID) in your final answer. " +
                           "Never invent CLI commands, flags, shortcuts, or features that are not in the retrieved application guidance or tool output. " +
                           "When asked how to perform an action, explain in plain language what details the user can provide in chat or in the app. " +
                           "Do not use knowledge documents as proof of current totals or permission to change data. " +
@@ -259,6 +260,7 @@ namespace ExpenseTracker.API.Services
                           "Use the search_knowledge tool for application guidance and explanations. " +
                           "Always use the current expense tools for financial data and database changes rather than guessing. " +
                           "Never mention internal tool names, function names, MCP messages, tool arguments, or raw tool output in the final answer. " +
+                          "Never mention internal database IDs (such as expense ID, category ID, or subcategory ID) in your final answer. " +
                           "Never invent CLI commands, flags, shortcuts, or features that are not in the retrieved application guidance or tool output. " +
                           "When asked how to perform an action, explain in plain language what details the user can provide in chat or in the app. " +
                           "Do not use knowledge documents as proof of current totals or permission to change data. " +
